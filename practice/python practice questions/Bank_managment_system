@@ -1,0 +1,237 @@
+#!/usr/bin/env python3
+"""A small, local command-line bank management practice application."""
+
+import hashlib
+import os
+import secrets
+import sqlite3
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from getpass import getpass
+
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bank.db")
+PBKDF2_ITERATIONS = 310_000
+
+
+def connect():
+	db = sqlite3.connect(DB_PATH, timeout=10)
+	db.row_factory = sqlite3.Row
+	db.execute("PRAGMA foreign_keys = ON")
+	return db
+
+
+def initialize():
+	with connect() as db:
+		db.executescript("""
+			CREATE TABLE IF NOT EXISTS accounts (
+				account_number TEXT PRIMARY KEY,
+				username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+				password_hash BLOB NOT NULL,
+				salt BLOB NOT NULL,
+				balance_cents INTEGER NOT NULL DEFAULT 0 CHECK(balance_cents >= 0),
+				created_at TEXT NOT NULL
+			);
+			CREATE TABLE IF NOT EXISTS transactions (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				from_account TEXT REFERENCES accounts(account_number),
+				to_account TEXT REFERENCES accounts(account_number),
+				kind TEXT NOT NULL,
+				amount_cents INTEGER NOT NULL CHECK(amount_cents > 0),
+				created_at TEXT NOT NULL
+			);
+		""")
+
+
+def now():
+	return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def password_digest(password, salt):
+	return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt,
+							   PBKDF2_ITERATIONS)
+
+
+def read_amount(prompt="Amount: "):
+	try:
+		amount = Decimal(input(prompt).strip()).quantize(
+			Decimal("0.01"), rounding=ROUND_HALF_UP
+		)
+		cents = int(amount * 100)
+		if cents <= 0:
+			raise ValueError
+		return cents
+	except (InvalidOperation, ValueError):
+		print("Enter a valid amount greater than 0.00.")
+		return None
+
+
+def create_account():
+	username = input("Choose a username: ").strip()
+	if not username or len(username) > 50:
+		print("Username must be between 1 and 50 characters.")
+		return
+	password = getpass("Choose a password (at least 8 characters): ")
+	if len(password) < 8:
+		print("Password must be at least 8 characters.")
+		return
+
+	salt = secrets.token_bytes(16)
+	digest = password_digest(password, salt)
+	account_number = str(secrets.randbelow(900_000_000) + 100_000_000)
+	try:
+		with connect() as db:
+			db.execute("""INSERT INTO accounts
+				(account_number, username, password_hash, salt, created_at)
+				VALUES (?, ?, ?, ?, ?)""",
+					   (account_number, username, digest, salt, now()))
+		print(f"Account created. Your account number is {account_number}.")
+	except sqlite3.IntegrityError:
+		print("That username is already in use; please choose another.")
+
+
+def login():
+	username = input("Username: ").strip()
+	password = getpass("Password: ")
+	with connect() as db:
+		account = db.execute(
+			"SELECT * FROM accounts WHERE username = ?", (username,)
+		).fetchone()
+	if account is None or not secrets.compare_digest(
+			password_digest(password, account["salt"]), account["password_hash"]):
+		print("Invalid username or password.")
+		return
+	print(f"Welcome, {account['username']}!")
+	account_menu(account["account_number"])
+
+
+def show_balance(account_number):
+	with connect() as db:
+		row = db.execute("SELECT balance_cents FROM accounts WHERE account_number = ?",
+						 (account_number,)).fetchone()
+	print(f"Available balance: ${row['balance_cents'] / 100:.2f}")
+
+
+def deposit(account_number):
+	cents = read_amount()
+	if cents is None:
+		return
+	with connect() as db:
+		db.execute("BEGIN IMMEDIATE")
+		db.execute("UPDATE accounts SET balance_cents = balance_cents + ? WHERE account_number = ?",
+				   (cents, account_number))
+		db.execute("""INSERT INTO transactions
+			(to_account, kind, amount_cents, created_at) VALUES (?, 'deposit', ?, ?)""",
+				   (account_number, cents, now()))
+	print("Deposit completed.")
+
+
+def withdraw(account_number):
+	cents = read_amount()
+	if cents is None:
+		return
+	with connect() as db:
+		db.execute("BEGIN IMMEDIATE")
+		result = db.execute("""UPDATE accounts SET balance_cents = balance_cents - ?
+			WHERE account_number = ? AND balance_cents >= ?""",
+							(cents, account_number, cents))
+		if result.rowcount == 0:
+			print("Withdrawal declined: insufficient funds.")
+			return
+		db.execute("""INSERT INTO transactions
+			(from_account, kind, amount_cents, created_at) VALUES (?, 'withdrawal', ?, ?)""",
+				   (account_number, cents, now()))
+	print("Withdrawal completed.")
+
+
+def transfer(account_number):
+	destination = input("Destination account number: ").strip()
+	if destination == account_number:
+		print("You cannot transfer to the same account.")
+		return
+	cents = read_amount()
+	if cents is None:
+		return
+	with connect() as db:
+		db.execute("BEGIN IMMEDIATE")
+		exists = db.execute("SELECT 1 FROM accounts WHERE account_number = ?",
+							(destination,)).fetchone()
+		if not exists:
+			print("Destination account was not found.")
+			return
+		result = db.execute("""UPDATE accounts SET balance_cents = balance_cents - ?
+			WHERE account_number = ? AND balance_cents >= ?""",
+							(cents, account_number, cents))
+		if result.rowcount == 0:
+			print("Transfer declined: insufficient funds.")
+			return
+		db.execute("UPDATE accounts SET balance_cents = balance_cents + ? WHERE account_number = ?",
+				   (cents, destination))
+		db.execute("""INSERT INTO transactions
+			(from_account, to_account, kind, amount_cents, created_at)
+			VALUES (?, ?, 'transfer', ?, ?)""",
+				   (account_number, destination, cents, now()))
+	print("Transfer completed.")
+
+
+def transaction_history(account_number):
+	with connect() as db:
+		rows = db.execute("""SELECT kind, from_account, to_account, amount_cents, created_at
+			FROM transactions WHERE from_account = ? OR to_account = ?
+			ORDER BY id DESC LIMIT 20""",
+						   (account_number, account_number)).fetchall()
+	if not rows:
+		print("No transactions yet.")
+		return
+	for row in rows:
+		if row["kind"] == "deposit":
+			details = "Deposit"
+		elif row["kind"] == "withdrawal":
+			details = "Withdrawal"
+		elif row["from_account"] == account_number:
+			details = f"Transfer to {row['to_account']}"
+		else:
+			details = f"Transfer from {row['from_account']}"
+		print(f"{row['created_at']} | {details} | ${row['amount_cents'] / 100:.2f}")
+
+
+def account_menu(account_number):
+	actions = {
+		"1": lambda: show_balance(account_number),
+		"2": lambda: deposit(account_number),
+		"3": lambda: withdraw(account_number),
+		"4": lambda: transfer(account_number),
+		"5": lambda: transaction_history(account_number),
+	}
+	while True:
+		print("\n1. Balance  2. Deposit  3. Withdraw  4. Transfer  5. History  6. Log out")
+		choice = input("Select an option: ").strip()
+		if choice == "6":
+			return
+		action = actions.get(choice)
+		if action:
+			action()
+		else:
+			print("Invalid option.")
+
+
+def main():
+	initialize()
+	while True:
+		print("\n=== Bank Management System ===\n1. Create account\n2. Log in\n3. Exit")
+		choice = input("Select an option: ").strip()
+		if choice == "1":
+			create_account()
+		elif choice == "2":
+			login()
+		elif choice == "3":
+			print("Goodbye.")
+			break
+		else:
+			print("Invalid option.")
+
+
+if __name__ == "__main__":
+	try:
+		main()
+	except (KeyboardInterrupt, EOFError):
+		print("\nGoodbye.")
