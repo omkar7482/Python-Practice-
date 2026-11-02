@@ -1,0 +1,42 @@
+class Person:
+    def __init__(self, name, age, gender, initial_balance=0):
+        self.name = name
+        self.age = age
+        self.gender = gender
+        self.initial_balance = initial_balance
+
+
+class bank:
+    def __init__(self):
+        self.accounts={}
+        
+    def create_account(self,name,account_number,initial_balance = 0):
+            if account_number in self.accounts:
+                print("Account already exists.")
+            else:
+                self.accounts[account_number] = {"name": name, "account_number": account_number, "balance": initial_balance}
+                print(f"Account created successfully for {name} with account number {account_number} and initial balance {initial_balance}.")
+                
+                
+
+def main():
+    while True:
+        print("======= Newton Bank =======")
+        print("1. Create Account")
+        print("2. Check Balance")
+        print("3. Deposite")
+        print("4. Withdraw")
+        print("5. Exit")
+        choice = input("Enter your choice: ")
+        if choice == "1":
+            def create_account():
+                name = input("Enter your name: ")
+                account_number = input("Enter your account number: ")
+                deposit = float(input("Enter your initial deposit amount: "))
+                bank.create_account(name, account_number, deposit)
+                
+        elif choice == "2":
+            input()
+
+
+main()
