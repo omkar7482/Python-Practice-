@@ -18,23 +18,25 @@ class Bank:
             print(f"Accont {account_number} created for {name}.")
 
 
-    def deposite(self,account_number):
+    def deposite(self):
         account_number = int(input("Enter your Account Number: "))
-        if account_number in self.accounts:
+        if account_number in self.account:
             amount_to_deposite = int(input("Amount to be Deposite: "))
             if amount_to_deposite > 0 :
-                self.accounts[account_number] = {
-                    "balance" : balance + amount_to_deposite 
+                self.account[account_number] = {
+                    "balance" : + amount_to_deposite 
                 }
             else:
                 print("Amount Shuld Must Be greater than \"0\"")
 
 
-    def check_balance(self,account_number):
+    def check_balance(self):
         account_number = int(input("Enter your Account Number: "))
-        if account_number in self.accounts:
-            print(self.accounts[account_number])
-            
+        if account_number in self.account:
+            print(f"your Account Balane is {self.account[account_number]["balance"]} Rs.")
+
+        else:
+            print("Account didn't Exist.")
 
 
 def main():
@@ -53,6 +55,6 @@ def main():
         if choice == 1 :
             b.create_account()
         elif choice == 2 :
-            Bank.check_balance()
+            b.check_balance()
 
 main()
