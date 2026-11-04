@@ -1,42 +1,58 @@
-class Person:
-    def __init__(self, name, age, gender, initial_balance=0):
-        self.name = name
-        self.age = age
-        self.gender = gender
-        self.initial_balance = initial_balance
-
-
-class bank:
+class Bank: 
     def __init__(self):
-        self.accounts={}
-        
-    def create_account(self,name,account_number,initial_balance = 0):
-            if account_number in self.accounts:
-                print("Account already exists.")
+        self.account = {}
+
+    def create_account(self):
+        account_number = int(input("Enter your Account Number: ")) 
+        if account_number in self.account:
+            print("Account already exists! ")
+        else:
+            name = input("Enter Your name: ")  
+            age = int(input("Enter Your Age: ")) 
+            balance = float(input("Deposite your initial balance: "))
+            self.account[account_number] = {
+                "name" : name,
+                "age" : age ,
+                "balance" : balance
+            }
+            print(f"Accont {account_number} created for {name}.")
+
+
+    def deposite(self,account_number):
+        account_number = int(input("Enter your Account Number: "))
+        if account_number in self.accounts:
+            amount_to_deposite = int(input("Amount to be Deposite: "))
+            if amount_to_deposite > 0 :
+                self.accounts[account_number] = {
+                    "balance" : balance + amount_to_deposite 
+                }
             else:
-                self.accounts[account_number] = {"name": name, "account_number": account_number, "balance": initial_balance}
-                print(f"Account created successfully for {name} with account number {account_number} and initial balance {initial_balance}.")
-                
-                
+                print("Amount Shuld Must Be greater than \"0\"")
+
+
+    def check_balance(self,account_number):
+        account_number = int(input("Enter your Account Number: "))
+        if account_number in self.accounts:
+            print(self.accounts[account_number])
+            
+
 
 def main():
-    while True:
-        print("======= Newton Bank =======")
-        print("1. Create Account")
-        print("2. Check Balance")
-        print("3. Deposite")
-        print("4. Withdraw")
-        print("5. Exit")
-        choice = input("Enter your choice: ")
-        if choice == "1":
-            def create_account():
-                name = input("Enter your name: ")
-                account_number = input("Enter your account number: ")
-                deposit = float(input("Enter your initial deposit amount: "))
-                bank.create_account(name, account_number, deposit)
-                
-        elif choice == "2":
-            input()
 
+    b = Bank()
+    while True:
+        print("========= Newton Bank's =========")
+        print("1. Create Account.")
+        print("2. Check Balance")
+        print("3. Deposite Balance.")
+        print("4. Withdraw Balance.")
+        print("5. Last Transections.")
+        print("6. Exit.")
+
+        choice = int(input("Enter your choicce: "))
+        if choice == 1 :
+            b.create_account()
+        elif choice == 2 :
+            Bank.check_balance()
 
 main()
