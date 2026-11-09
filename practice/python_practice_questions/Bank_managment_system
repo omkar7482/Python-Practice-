@@ -1,0 +1,94 @@
+class Bank:
+    def __init__(self):
+        self.account = {}
+
+    def create_account(self):
+        account_number = int(input("Enter your Account Number: "))
+        if account_number in self.account:
+            print("Account already exists! ")
+        else:
+            name = input("Enter Your name: ")
+            age = int(input("Enter Your Age: "))
+            balance = float(input("Deposite your initial balance: "))
+            self.account[account_number] = {
+                "name" : name,
+                "age" : age ,
+                "balance" : balance
+            }
+            print(f"Accont {account_number} created for {name}.")
+
+
+    def deposite(self):
+        account_number = int(input("Enter your Account Number: "))
+        if account_number in self.account:
+            amount_to_deposite = int(input("Amount to be Deposite: "))
+            if amount_to_deposite > 0 :
+                self.account[account_number] = {
+                    "balance" : self.account[account_number]["balance"] + amount_to_deposite
+                }
+            else:
+                print("Amount Shuld Must Be greater than \"0\"")
+        else:
+          print("Account didn't Exist! ")
+
+
+    def check_balance(self):
+        account_number = int(input("Enter your Account Number: "))
+        if account_number in self.account:
+            print(f"your Account Balane is {self.account[account_number]["balance"]} Rs.")
+
+        else:
+            print("Account didn't Exist! ")
+
+    def withdraw(self):
+        account_number = int(input("Enter your Account Number: "))
+        if account_number in self.account:
+            amount_to_withdraw = int(input("Amount to be Withdraw: "))
+            if amount_to_withdraw > 0 :
+              if amount_to_withdraw <= self.account[account_number]["balance"]:
+                self.account[account_number] = {
+                    "balance" : self.account[account_number]["balance"] - amount_to_withdraw
+                }
+              else:
+                print("Insufficient Balance! ")
+            else:
+                print("Amount Shuld Must Be greater than \"0\"")
+        else:
+          print("Account didn't Exist! ")
+
+    def last_transections(self):
+        account_number = int(input("Enter your Account Number: "))
+        if account_number in self.account:
+            
+
+
+def main():
+    b = Bank()
+    while True:
+        print("========= Newton Bank's =========")
+        print("1. Create Account.")
+        print("2. Check Balance")
+        print("3. Deposite Balance.")
+        print("4. Withdraw Balance.")
+        print("5. Last Transections.")
+        print("6. Exit.")
+
+        choice = int(input("Enter your choice: "))
+        if choice == 1 :
+            b.create_account()
+        elif choice == 2 :
+            b.check_balance()
+        elif choice == 3 :
+            b.deposite()
+        elif choice == 4 :
+            b.withdraw()
+        elif choice == 5 :
+            b.last_transections()
+        elif choice == 6 :
+            break
+        else:
+            print("Invalid Choice! ")
+
+
+
+main()
