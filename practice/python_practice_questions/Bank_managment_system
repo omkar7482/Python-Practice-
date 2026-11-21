@@ -10,13 +10,13 @@ class Bank:
             name = input("Enter Your name: ")
             age = int(input("Enter Your Age: "))
             balance = float(input("Deposite your initial balance: "))
-            ["Transections"].append(f"Your inital deposite is {balance} Rs.")
             self.account[account_number] = {
                 "name" : name,
                 "age" : age ,
                 "balance" : balance,
                 "Transections" : []
             }
+            ["Transections"].append(f"Your inital deposite is {balance} Rs.")
             # Transections.append(f"Your initial deposite is {balance} Rs.")
             print(f"Accont {account_number} created for {name}.")
 
@@ -31,7 +31,7 @@ class Bank:
                     
                 }
                 self.account[account_number] = {
-                    "Transections" : self.account[account_number]["Transections"].append(f"You have deposited {amount_to_deposite} Rs.")
+                    "Transections" : ["Transections"].append(f"You have deposited {amount_to_deposite} Rs.")
                 }
                 print(f"Amount {amount_to_deposite} Rs is deposited in A/C {account_number}.")
             else:
